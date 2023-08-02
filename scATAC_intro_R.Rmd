@@ -25,8 +25,11 @@ library(Seurat)
 
 
 ```{r}
-counts <- Read10X_h5(filename = "GSM5723631_Young_HSC_filtered_peak_bc_matrix.h5")
+# The mapped peak by cell matrix
+counts <- Read10X_h5(filename = "/home/tealeave/projects/scATACseq_data/GSM5723631_Young_HSC_filtered_peak_bc_matrix.h5")
 ```
+
+
 
 ```{r}
 meta <- read.csv(
@@ -41,7 +44,7 @@ row.names = 1)
   counts = counts,
   sep = c(":", "-"),
   genome = 'mm10',
-  fragments = './GSM5723631_Young_HSC_fragments.tsv.gz',
+  fragments = '/home/tealeave/projects/scATACseq_data/GSM5723631_Young_HSC_fragments.tsv.gz',
   min.cells = 10,
   min.features = 200
 )
@@ -78,7 +81,7 @@ library(EnsDb.Mmusculus.v79)
 
 
 ```{r}
-annotations <- GetGRangesFromEnsDb(ensdb = EnsDb.Mmusculus.v79)
+annotations <- GetGRangesFromEnsDb(ensdb = EnsDb.Mmusculus.v79) # get the range of diff genes from mouse db
 seqlevelsStyle(annotations) <- 'UCSC'
 ```
 
@@ -90,14 +93,17 @@ Annotation(data) <- annotations
 
 
 ```{r}
-data <- NucleosomeSignal(object = data) #fragment ratio 147-294: <147
+# This is because the average length of the DNA length that wrapped around histone is 147. This way we can get fragments that are on nucleosome and the frags that are nucleaosome free.
+data <- NucleosomeSignal(object = data) #fragment ratio 147-294: <147 . 
 ```
 
 ```{r}
+# adding the TSS enrichment data
 data <- TSSEnrichment(object = data, fast = FALSE)
 ```
 
 ```{r}
+# These black listed regions have high signal regardless of cell type. We know it's artifacts
 data$blacklist_ratio <- data$blacklist_region_fragments / data$peak_region_fragments
 
 #data[[]]
@@ -110,6 +116,7 @@ data$pct_reads_in_peaks <- data$peak_region_fragments / data$passed_filters * 10
 
 
 ```{r}
+# do a violin plot to determine the threshold
 VlnPlot(
   object = data,
   features = c('peak_region_fragments', 'pct_reads_in_peaks', 
@@ -137,6 +144,7 @@ data <- subset(
 
 
 ```{r}
+# calculate the quantile and use it to establish cutoffs
 low_prf <- quantile(data[["peak_region_fragments"]]$peak_region_fragments, probs = 0.02)
 hig_prf <- quantile(data[["peak_region_fragments"]]$peak_region_fragments, probs = 0.98)
 low_prp <- quantile(data[["pct_reads_in_peaks"]]$pct_reads_in_peaks, probs = 0.02)
@@ -158,6 +166,7 @@ print(low_ts)
 ```
 
 ```{r}
+# clean up the data
 data <- subset(
   x = data,
   subset = peak_region_fragments > low_prf &
@@ -191,16 +200,21 @@ data
 
 
 ```{r}
+# Similar to PCA
 data <- RunSVD(data)
 ```
 
 ```{r}
+# plot the PCs. PC1 is too highly correlated, it is an artifact.
 DepthCor(data)
 ```
 
 ```{r}
+# again skip the first 1 because it is an artifact and just use dim 2:30
 data <- RunUMAP(object = data, reduction = 'lsi', dims = 2:30)
+# clustering
 data <- FindNeighbors(object = data, reduction = 'lsi', dims = 2:30)
+# they recommend to use algo 3
 data <- FindClusters(object = data, verbose = FALSE, algorithm = 3)
 DimPlot(object = data, label = TRUE) + NoLegend()
 ```
@@ -278,13 +292,13 @@ import_atac <- function(count_path, meta_path, fragment_path){
 
 
 ```{r}
-young <- import_atac("GSM5723631_Young_HSC_filtered_peak_bc_matrix.h5",
-         'GSM5723631_Young_HSC_singlecell.csv.gz',
-         './GSM5723631_Young_HSC_fragments.tsv.gz')
+young <- import_atac("/home/tealeave/projects/scATACseq_data/GSM5723631_Young_HSC_filtered_peak_bc_matrix.h5",
+         '/home/tealeave/projects/scATACseq_data/GSM5723631_Young_HSC_singlecell.csv.gz',
+         '/home/tealeave/projects/scATACseq_data/GSM5723631_Young_HSC_fragments.tsv.gz')
 
-old <- import_atac("GSM5723632_Aged_HSC_filtered_peak_bc_matrix.h5",
-         'GSM5723632_Aged_HSC_singlecell.csv.gz',
-         './GSM5723632_Aged_HSC_fragments.tsv.gz')
+old <- import_atac("/home/tealeave/projects/scATACseq_data/GSM5723632_Aged_HSC_filtered_peak_bc_matrix.h5",
+         '/home/tealeave/projects/scATACseq_data/GSM5723632_Aged_HSC_singlecell.csv.gz',
+         '/home/tealeave/projects/scATACseq_data/GSM5723632_Aged_HSC_fragments.tsv.gz')
 ```
 
 ```{r}
