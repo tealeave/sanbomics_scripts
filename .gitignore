@@ -186,3 +186,8 @@ data/
 aclImdb/
 aclImdb_archive/
 **/aclImdb_archive
+
+# Large files
+combined.h5ad
+integrated.h5ad
+model.model/
